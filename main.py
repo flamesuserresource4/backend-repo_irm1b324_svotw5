@@ -1,8 +1,10 @@
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from typing import Dict
 
-app = FastAPI()
+app = FastAPI(title="StemLab Backend", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -12,57 +14,41 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Prepare storage directories (safe no-op if not used)
+try:
+    BASE_DIR = os.getcwd()
+    UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
+    OUTPUT_DIR = os.path.join(BASE_DIR, "outputs")
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+except Exception:
+    # In extremely restricted environments, ignore fs setup errors
+    UPLOAD_DIR = "uploads"
+    OUTPUT_DIR = "outputs"
+
+
 @app.get("/")
-def read_root():
-    return {"message": "Hello from FastAPI Backend!"}
+def root():
+    return {"message": "Audio Processing Backend Ready"}
+
 
 @app.get("/api/hello")
 def hello():
     return {"message": "Hello from the backend API!"}
 
+
 @app.get("/test")
-def test_database():
-    """Test endpoint to check if database is available and accessible"""
-    response = {
+def test():
+    return {
         "backend": "✅ Running",
-        "database": "❌ Not Available",
-        "database_url": None,
-        "database_name": None,
-        "connection_status": "Not Connected",
-        "collections": []
+        "note": "Audio processing temporarily disabled to ensure server startup.",
     }
-    
-    try:
-        # Try to import database module
-        from database import db
-        
-        if db is not None:
-            response["database"] = "✅ Available"
-            response["database_url"] = "✅ Configured"
-            response["database_name"] = db.name if hasattr(db, 'name') else "✅ Connected"
-            response["connection_status"] = "Connected"
-            
-            # Try to list collections to verify connectivity
-            try:
-                collections = db.list_collection_names()
-                response["collections"] = collections[:10]  # Show first 10 collections
-                response["database"] = "✅ Connected & Working"
-            except Exception as e:
-                response["database"] = f"⚠️  Connected but Error: {str(e)[:50]}"
-        else:
-            response["database"] = "⚠️  Available but not initialized"
-            
-    except ImportError:
-        response["database"] = "❌ Database module not found (run enable-database first)"
-    except Exception as e:
-        response["database"] = f"❌ Error: {str(e)[:50]}"
-    
-    # Check environment variables
-    import os
-    response["database_url"] = "✅ Set" if os.getenv("DATABASE_URL") else "❌ Not Set"
-    response["database_name"] = "✅ Set" if os.getenv("DATABASE_NAME") else "❌ Not Set"
-    
-    return response
+
+
+@app.post("/api/process")
+async def process_audio(_: UploadFile = File(...)) -> Dict:
+    # Placeholder to guarantee boot; real DSP stack can be enabled once environment is ready
+    raise HTTPException(status_code=501, detail="Audio processing not enabled in this environment. Choose 'Enable lightweight processing' and I'll switch to a compatible stack.")
 
 
 if __name__ == "__main__":
